@@ -285,14 +285,67 @@
             text-align: center;
         }
 
+        .heart-content.loading .heart-button {
+            display: none;
+        }
+
+        .heart-content.loading .heart-loader {
+            display: flex;
+        }
+
+        .heart-content.ready .heart-loader {
+            display: none;
+        }
+
+        .heart-content.ready .heart-button {
+            display: flex;
+        }
+
         .heart-text {
             font-size: 1.1rem;
             margin-bottom: 14px;
             opacity: 0.9;
+            min-height: 1.4em;
         }
 
         .heart-text span {
             font-size: 1.4rem;
+        }
+
+        .heart-loader {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+            color: #ffd1e8;
+        }
+
+        .heart-loading-dots {
+            display: inline-flex;
+            gap: 6px;
+        }
+
+        .heart-loading-dots span {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #ffd1e8;
+            opacity: 0.5;
+            animation: heartLoading 0.9s infinite;
+        }
+
+        .heart-loading-dots span:nth-child(2) {
+            animation-delay: 0.15s;
+        }
+
+        .heart-loading-dots span:nth-child(3) {
+            animation-delay: 0.3s;
+        }
+
+        @keyframes heartLoading {
+            0% { transform: translateY(0); opacity: 0.4; }
+            50% { transform: translateY(-3px); opacity: 1; }
+            100% { transform: translateY(0); opacity: 0.4; }
         }
 
         .heart-button {
@@ -513,6 +566,44 @@
                 opacity: 0;
             }
         }
+
+        .expired-stream {
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            overflow: hidden;
+            z-index: 2;
+            opacity: 0;
+            transition: opacity 0.6s ease;
+        }
+
+        .expired-stream.active {
+            opacity: 1;
+        }
+
+        .expired-word {
+            position: absolute;
+            bottom: -30px;
+            font-size: 1rem;
+            color: rgba(255, 255, 255, 0.85);
+            text-shadow: 0 5px 15px rgba(0, 0, 0, 0.45);
+            animation: waterFlow 5s linear forwards;
+            white-space: nowrap;
+        }
+
+        @keyframes waterFlow {
+            0% {
+                transform: translateY(0) scale(0.9);
+                opacity: 0;
+            }
+            20% {
+                opacity: 0.9;
+            }
+            100% {
+                transform: translateY(-200px) scale(1.15);
+                opacity: 0;
+            }
+        }
     </style>
 </head>
 <body>
@@ -520,11 +611,19 @@
 
 <!-- Overlay القلب -->
 <div id="heart-overlay" class="heart-overlay">
-    <div class="heart-content">
-        <div class="heart-text">
-            اضغط  لفتح رسالتك <span>💖</span>
+    <div id="heart-content" class="heart-content ready">
+        <div id="heart-text" class="heart-text">
+            اضغط لفتح رسالتك <span>💖</span>
         </div>
-        <button id="heart-button" class="heart-button">❤</button>
+        <div id="heart-loader" class="heart-loader">
+            <div class="heart-loading-dots">
+                <span></span>
+                <span></span>
+                <span></span>
+            </div>
+            <small>جارٍ التحقق من كود الرسالة...</small>
+        </div>
+        <button id="heart-button" class="heart-button" aria-label="افتح الرسالة">❤</button>
     </div>
 </div>
 
@@ -582,6 +681,8 @@
     </div>
 </div>
 
+<div id="expired-stream" class="expired-stream"></div>
+
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-app.js";
     import { getFirestore, doc, getDoc, updateDoc, increment } from "https://www.gstatic.com/firebasejs/12.6.0/firebase-firestore.js";
@@ -604,6 +705,8 @@
 
     const heartOverlay = document.getElementById("heart-overlay");
     const heartButton = document.getElementById("heart-button");
+    const heartContent = document.getElementById("heart-content");
+    const heartTextEl = document.getElementById("heart-text");
 
     const codeSection = document.getElementById("code-section");
     const messageSection = document.getElementById("message-section");
@@ -616,13 +719,57 @@
     const msgSignatureEl = document.getElementById("msg-signature");
     const openCountEl = document.getElementById("open-count");
     const typingIndicatorEl = document.getElementById("typing-indicator");
+    const expiredStream = document.getElementById("expired-stream");
 
     let pendingMessage = null;
     let pendingCode = null;
+    let expiredStreamInterval = null;
 
     // ?admin=1 في الرابط = عرض أدمن (لا يزيد العداد)
     const urlParams = new URLSearchParams(window.location.search);
     const isAdminView = urlParams.get("admin") === "1";
+
+    const expiredWords = ["احبك", "هائم بك", "روحي", "عيوني", "❤", "🌹", "💖", "🎁", "✨"]; 
+
+    function showHeartLoading() {
+        heartTextEl.textContent = "جارٍ التحقق من كود الرسالة...";
+        heartContent.classList.add("loading");
+        heartContent.classList.remove("ready");
+        heartOverlay.classList.add("show");
+    }
+
+    function showHeartReady() {
+        heartTextEl.innerHTML = "اضغط لفتح رسالتك <span>💖</span>";
+        heartContent.classList.remove("loading");
+        heartContent.classList.add("ready");
+        heartOverlay.classList.add("show");
+    }
+
+    function hideHeartOverlay() {
+        heartOverlay.classList.remove("show");
+        heartContent.classList.remove("loading");
+        heartContent.classList.remove("ready");
+    }
+
+    function spawnExpiredWord() {
+        if (!expiredStream) return;
+        const el = document.createElement("span");
+        el.className = "expired-word";
+        el.textContent = expiredWords[Math.floor(Math.random() * expiredWords.length)];
+        el.style.left = (5 + Math.random() * 90) + "%";
+        const duration = 4 + Math.random() * 3;
+        el.style.animationDuration = duration + "s";
+        el.style.fontSize = (0.9 + Math.random() * 0.8) + "rem";
+        expiredStream.appendChild(el);
+        setTimeout(() => el.remove(), duration * 1000);
+    }
+
+    function startExpiredStream() {
+        if (!expiredStream || expiredStreamInterval) return;
+        expiredStream.classList.add("active");
+        spawnExpiredWord();
+        expiredStreamInterval = setInterval(spawnExpiredWord, 1200);
+    }
 
     async function openMessageByCode(rawCode) {
         const code = (rawCode || "").trim().toUpperCase();
@@ -632,9 +779,15 @@
             statusEl.className = "status err";
             pendingMessage = null;
             pendingCode = null;
-            heartOverlay.classList.remove("show");
+            hideHeartOverlay();
             return;
         }
+
+        statusEl.textContent = "جارٍ التحقق من الكود...";
+        statusEl.className = "status";
+        pendingMessage = null;
+        pendingCode = null;
+        showHeartLoading();
 
         try {
             const docRef = doc(db, "messages", code);
@@ -645,7 +798,7 @@
                 statusEl.className = "status err";
                 pendingMessage = null;
                 pendingCode = null;
-                heartOverlay.classList.remove("show");
+                hideHeartOverlay();
                 return;
             }
 
@@ -671,7 +824,8 @@
                 statusEl.className = "status err";
                 pendingMessage = null;
                 pendingCode = null;
-                heartOverlay.classList.remove("show");
+                hideHeartOverlay();
+                startExpiredStream();
                 return;
             }
 
@@ -682,14 +836,14 @@
             pendingCode = code;
 
             heartButton.classList.remove("explode");
-            heartOverlay.classList.add("show");
+            showHeartReady();
         } catch (err) {
             console.error(err);
             statusEl.textContent = "حدث خطأ أثناء الاتصال بالسيرفر، حاول مرة أخرى.";
             statusEl.className = "status err";
             pendingMessage = null;
             pendingCode = null;
-            heartOverlay.classList.remove("show");
+            hideHeartOverlay();
         }
     }
 
@@ -803,7 +957,7 @@
         }
 
         setTimeout(() => {
-            heartOverlay.classList.remove("show");
+            hideHeartOverlay();
 
             const recipientLabel = msg.recipient ? `إلى ${msg.recipient}` : "إلى قلبك أنت";
             const titleLabel = msg.title || "رسالة من القلب";
