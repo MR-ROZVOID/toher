@@ -72,6 +72,7 @@
             opacity: 0.06;
             left: -10px;
             top: -15px;
+            pointer-events: none;
         }
 
         .viewer-header {
@@ -350,7 +351,6 @@
 
         .heart-button {
             width: 150px;
-
             height: 150px;
             border-radius: 50%;
             border: none;
@@ -408,74 +408,6 @@
                 transform: translate(calc(-50% + var(--dx, 0px)), calc(-50% + var(--dy, -80px))) scale(1.05);
             }
         }
-
-            height: 150px;
-            border-radius: 50%;
-            border: none;
-            cursor: pointer;
-            background: radial-gradient(circle at 30% 30%, #fff, #ff4b8b);
-            box-shadow:
-                0 0 30px rgba(255, 105, 180, 0.8),
-                0 0 60px rgba(255, 105, 180, 0.4);
-            font-size: 4rem;
-            color: #fff;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            animation: bigPulse 1.2s infinite;
-            position: relative;
-            overflow: hidden;
-        }
-
-        @keyframes bigPulse {
-            0%, 100% {
-                transform: scale(1);
-            }
-            50% {
-                transform: scale(1.12);
-            }
-        }
-
-        .heart-button.explode {
-            animation: heartExplode 0.6s forwards;
-        }
-
-        @keyframes heartExplode {
-            0% {
-                transform: scale(1);
-                opacity: 1;
-            }
-            70% {
-                transform: scale(4);
-                opacity: 1;
-            }
-            100% {
-                transform: scale(7);
-                opacity: 0;
-            }
-        }
-
-        .heart-spark {
-            position: absolute;
-            font-size: 1.5rem;
-            opacity: 0;
-            animation: spark 0.7s forwards;
-        }
-
-        @keyframes spark {
-            0% {
-                opacity: 0;
-                transform: translate(0, 0) scale(0.5);
-            }
-            50% {
-                opacity: 1;
-            }
-            100% {
-                opacity: 0;
-                transform: translate(var(--tx), var(--ty)) scale(1.3);
-            }
-        }
-
 
         @media (max-width: 600px) {
             .heart-button {
@@ -895,10 +827,6 @@
             pendingMessage = msg;
             pendingCode = code;
 
-
-
-            heartButton.classList.remove("explode");
-
             showHeartReady();
         } catch (err) {
             console.error(err);
@@ -909,7 +837,6 @@
             hideHeartOverlay();
         }
     }
-
 
     function launchHeartFountain() {
         const heartIcons = ["❤", "💖", "💕", "💘", "💝"];
@@ -941,31 +868,6 @@
         heartButton.classList.add("fountain");
         setTimeout(() => heartButton.classList.remove("fountain"), 900);
     }
-
-    function createSpark(container) {
-        const spark = document.createElement("div");
-        spark.className = "heart-spark";
-        spark.textContent = "❤";
-
-        const angle = Math.random() * Math.PI * 2;
-        const distance = 80 + Math.random() * 60;
-        const tx = Math.cos(angle) * distance;
-        const ty = Math.sin(angle) * distance;
-
-        spark.style.setProperty("--tx", tx + "px");
-        spark.style.setProperty("--ty", ty + "px");
-
-        spark.style.left = "50%";
-        spark.style.top = "50%";
-        spark.style.transform = "translate(-50%, -50%)";
-
-        container.appendChild(spark);
-
-        setTimeout(() => {
-            spark.remove();
-        }, 700);
-    }
-
 
     function typeText(element, fullText, speed, callback) {
         element.textContent = "";
@@ -1040,7 +942,6 @@
         }, 10000);
     }
 
-
     heartButton.addEventListener("click", () => {
         if (!pendingMessage || !pendingCode) return;
 
@@ -1050,29 +951,11 @@
         heartTextEl.textContent = "قلوب حب تتدفق لفتح رسالتك...";
         launchHeartFountain();
 
-
-    heartButton.addEventListener("click", () => {
-        if (!pendingMessage || !pendingCode) return;
-
-        const msg = pendingMessage;
-        const code = pendingCode;
-
-        heartButton.classList.add("explode");
-
-        for (let i = 0; i < 7; i++) {
-            setTimeout(() => createSpark(heartOverlay), i * 60);
-        }
-
-
         setTimeout(() => {
             hideHeartOverlay();
 
             const recipientLabel = msg.recipient ? `إلى ${msg.recipient}` : "إلى قلبك أنت";
-
             const titleLabel = msg.title || "رسالة من القلب";
-
-            const titleLabel = msg.title || "رسالة من القلب";
-
 
             let categoryIcon = "💌";
             if (msg.category === "حب") categoryIcon = "❤️";
