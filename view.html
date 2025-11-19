@@ -378,39 +378,27 @@
             }
         }
 
-        /* نافورة القلوب */
-        .heart-button.fountain {
-            animation: none;
-            transform: scale(1.05);
+        /* انفجار القلب عند الفتح */
+        .heart-button.explode {
+            animation: heartExplode 0.6s forwards;
         }
 
-        .heart-burst {
-            position: absolute;
-            left: 50%;
-            top: 50%;
-            transform: translate(-50%, -50%);
-            font-size: 1.3rem;
-            opacity: 0;
-            pointer-events: none;
-            animation: heartFountain 1.1s ease-out forwards;
-            filter: drop-shadow(0 6px 10px rgba(255, 0, 102, 0.5));
-        }
-
-        @keyframes heartFountain {
+        @keyframes heartExplode {
             0% {
-                opacity: 0;
-                transform: translate(-50%, -50%) scale(0.3);
+                transform: scale(1);
+                opacity: 1;
             }
-            20% {
+            70% {
+                transform: scale(4);
                 opacity: 1;
             }
             100% {
+                transform: scale(7);
                 opacity: 0;
-                transform: translate(calc(-50% + var(--dx, 0px)), calc(-50% + var(--dy, -80px))) scale(1.05);
             }
         }
 
-        /* شرارات القلب (مستخدمة في createSpark إن احتجتها لاحقًا) */
+        /* شرارات القلب (مستخدمة في createSpark) */
         .heart-spark {
             position: absolute;
             font-size: 1.4rem;
@@ -956,48 +944,25 @@
         }, 10000);
     }
 
-    function launchHeartFountain() {
-        const heartIcons = ["❤", "💖", "💕", "💘", "💝"];
-        const totalHearts = 20;
-
-        for (let i = 0; i < totalHearts; i++) {
-            setTimeout(() => {
-                const heart = document.createElement("span");
-                heart.className = "heart-burst";
-                heart.textContent = heartIcons[Math.floor(Math.random() * heartIcons.length)];
-
-                const angle = (-Math.PI / 2) + (Math.random() - 0.5) * (Math.PI / 1.3);
-                const distance = 60 + Math.random() * 90;
-                const dx = Math.cos(angle) * distance;
-                const dy = Math.sin(angle) * distance;
-
-                heart.style.setProperty("--dx", dx + "px");
-                heart.style.setProperty("--dy", dy + "px");
-                heart.style.fontSize = (1.1 + Math.random() * 0.9) + "rem";
-
-                const duration = 0.9 + Math.random() * 0.6;
-                heart.style.animationDuration = duration + "s";
-
-                heartButton.appendChild(heart);
-                setTimeout(() => heart.remove(), duration * 1000);
-            }, i * 70);
-        }
-
-        heartButton.classList.add("fountain");
-        setTimeout(() => heartButton.classList.remove("fountain"), 900);
-    }
-
     heartButton.addEventListener("click", () => {
         if (!pendingMessage || !pendingCode) return;
 
         const msg = pendingMessage;
         const code = pendingCode;
 
-        heartTextEl.textContent = "قلوب حب تتدفق لفتح رسالتك...";
-        launchHeartFountain();
+        // نص جديد يناسب انفجار القلب
+        heartTextEl.textContent = "قلبك ينفجر حبًا لفتح رسالتك...";
 
+        // تشغيل أنيميشن الانفجار + الشرارات
+        heartButton.classList.add("explode");
+        for (let i = 0; i < 7; i++) {
+            setTimeout(() => createSpark(heartOverlay), i * 60);
+        }
+
+        // بعد انتهاء الانفجار، نفتح الرسالة
         setTimeout(() => {
             hideHeartOverlay();
+            heartButton.classList.remove("explode");
 
             const recipientLabel = msg.recipient ? `إلى ${msg.recipient}` : "إلى قلبك أنت";
             const titleLabel = msg.title || "رسالة من القلب";
@@ -1090,7 +1055,7 @@
                 pendingMessage = null;
                 pendingCode = null;
             }, 5000);
-        }, 950);
+        }, 650);
     });
 
     openMessageBtn.addEventListener("click", () => {
