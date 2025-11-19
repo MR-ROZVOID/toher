@@ -1008,6 +1008,9 @@
                             setTimeout(() => {
                                 msgTextEl.classList.remove("typing-glow");
                             }, 2500);
+
+                            // تبدأ الكلمات المتدفقة فور اكتمال كتابة محتوى الرسالة
+                            startExpiredStream();
                         });
                     });
                 });
